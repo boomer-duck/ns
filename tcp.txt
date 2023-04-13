@@ -1,0 +1,77 @@
+set ns [new Simulator]
+set nf [open out.nam w]
+$ns namtrace-all $nf
+
+set tf [open out.tr w]
+$ns trace-all $tf
+
+$ns color 1 Blue
+$ns color 2 Red
+
+set n(0) [$ns node]
+set n(1) [$ns node]
+set n(2) [$ns node]
+set n(3) [$ns node]
+
+$ns duplex-link $n(0) $n(2) 2Mb 10ms DropTail
+$ns duplex-link $n(1) $n(2) 2Mb 10ms DropTail
+$ns duplex-link $n(2) $n(3) 1.2Mb 10ms DropTail
+
+$ns duplex-link-op $n(0) $n(2) orient right-down
+$ns duplex-link-op $n(1) $n(2) orient right-up
+$ns duplex-link-op $n(2) $n(3) orient right
+
+$ns duplex-link-op $n(2) $n(3) queuePos 0.5
+
+set tcp0 [new Agent/TCP]
+$tcp0 set class_ 1
+$ns attach-agent $n(0) $tcp0
+
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+
+set sink [new Agent/TCPSink]
+$ns attach-agent $n(3) $sink
+$ns connect $tcp0 $sink
+
+set udp1 [new Agent/UDP]
+$udp1 set class_ 2
+$ns attach-agent $n(1) $udp1
+
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 set packetSize_ 1000
+$cbr1 set rate_ 1Mb
+$cbr1 attach-agent $udp1
+
+set null [new Agent/Null]
+$ns attach-agent $n(3) $null
+
+$ns connect $udp1 $null
+set outfile [open congestion.txt w]
+proc plotWindow {tcp outfile} {
+global ns
+set now [$ns now]
+set cwnd [$tcp set cwnd_]
+puts $outfile "$now $cwnd"
+$ns at [expr $now+0.1] "plotWindow $tcp $outfile"
+}
+
+$ns at 1.0 "plotWindow $tcp0 $outfile"
+
+proc finish {} {
+global ns nf tf
+$ns flush-trace
+#Close the NAM trace file
+close $nf
+close $tf
+#Execute NAM on the trace file
+exec nam out.nam &
+exit 0
+}
+
+$ns at 0.5 "$cbr1 start"
+$ns at 1.0 "$ftp0 start"
+$ns at 20.0 "$ftp0 stop"
+$ns at 20.5 "$cbr1 stop"
+$ns at 20.6 "finish"
+$ns run

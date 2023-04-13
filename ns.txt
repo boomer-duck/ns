@@ -1,0 +1,53 @@
+Set ns [new Simulator]
+Set nf [open out.nam w]
+$ns namtrace-all $nf
+
+Set tf [open out.tr w]
+$ns trace-all $tf
+
+Set n1 [$ns Node]
+Set n2 [$ns node]
+
+$ns duplex-link $n1 $n2 2Mb 10ms DropTail
+
+Set udp [new Agent/UDP]
+$ns attach-agent $n1 $udp
+Set null [new Agent/null]
+$ns attach-agent $n2 $null
+$ns connect $udp $null
+
+Set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $udp
+$cbr set type_ CBR
+$cbr set packet_size_ 1000
+$cbr set rate_ 1mb
+
+$ns at 0.1 “$cbr start”
+$ns at 4.5 “$cbr stop”
+
+Proc {} {
+	Global ns nf tf
+	$ns flush-trace
+	
+	Close $nf
+	Close $tf
+
+	Exec nam out.nam &
+	Exit 0
+}
+
+$ns at 5 “finish”
+$ns run
+
+
+$ns color 1 Blue 
+$ns color 2 Red
+$udp set class_ 1
+y DropTail, Stochastic Fair Queuing(SFQ)
+
+#STep: Deleting the link 2 and 3 
+$ns rtmodel-at 1.0 down $n2 $n3 
+$ns rtmodel-at 2.0 up $n2 $n3
+
+$ns rtproto DV (before starting)
+$ns at 0.5 "$cbr0 start”

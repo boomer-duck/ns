@@ -1,0 +1,56 @@
+set ns [new Simulator] 
+set nf [open out.nam w] 
+$ns namtrace-all 
+$nf set tf [open out.tr w] 
+$ns trace-all $tf 
+
+set n(bw) 1Mb
+set n(delay) 10ms
+set n(ll) LL
+set n(mac) Mac/802_3
+set n(ifq) Queue/DropTail
+set n(chan) Channel
+
+if {$argc != 2} { 
+puts "Usage ns csmacd.tcl " 
+puts "Example ns bus.tcl 15 2"
+ exit 
+}
+
+
+set n(num) [lindex $argv 0] 
+set n(nn) [lindex $argv 1] 
+for {set i 0} {$i < $n(num)} {incr i} { 
+set node($i) [$ns node] 
+lappend nl $node($i) 
+}
+
+$ns make-lan -trace on $nl $n(bw) $n(delay) $n(ll) $n(ifq) $n(mac) $n(chan) 
+set nodex [$ns node] 
+$ns duplex-link $nodex $node(0) 1Mb 10ms DropTail 
+$ns duplex-link-op $nodex $node(0) orient right
+
+set null(0) [new Agent/Null] 
+$ns attach-agent $node(0) $null(0)
+
+for {set i 1} {$i <= $n(nn)} {incr i} {
+ set udp($i) [new Agent/UDP] 
+$ns attach-agent $node($i) $udp($i) 
+set cbr($i) [new Application/Traffic/CBR] 
+$cbr($i) set packetSize_ 1000 
+$cbr($i) set rate_ 100Kb 
+$cbr($i) attach-agent $udp($i) 
+$ns connect $udp($i) $null(0) 
+$ns at 0.5 "$cbr($i) start" 
+$ns at 20.0 "$cbr($i) stop" 
+}
+
+proc finish {} {
+ global ns nf tf 
+$ns flush-trace 
+Close $nf c
+lose $tf 
+exec nam out.nam & 
+exit 0 
+} 
+$ns run
