@@ -1,0 +1,411 @@
+
+Star topology
+#create a simulator object
+set ns [new Simulator]
+#Open the NAM trace file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+set tf [open out.tr w]
+$ns trace-all $tf
+#create new nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+#create link between nodes
+$ns duplex-link $n0 $n2 1Mb 10ms DropTail
+$ns duplex-link $n1 $n2 1Mb 10ms DropTail
+$ns duplex-link $n2 $n3 1Mb 10ms DropTail
+#define finish procedure
+proc finish {} {
+global ns nf tf
+$ns flush-trace
+close $nf
+close $tf
+exec nam out.nam &
+exit 0
+}
+$ns color 1 Blue
+$ns color 2 Red
+#Setup a UDP layer
+set udp [new Agent/UDP]
+$udp set class_ 1
+$ns attach-agent $n0 $udp
+set udp1 [new Agent/UDP]
+$udp1 set class_ 2
+$ns attach-agent $n1 $udp1set null [new Agent/Null]
+$ns attach-agent $n3 $null
+$ns connect $udp $null
+$ns connect $udp1 $null
+#Setup a CBR over a udp connection
+set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $udp
+$cbr set type_ CBR
+$cbr set packet_size_ 500
+$cbr set interval_ 0.005
+#Setup a CBR1 over a udp1 connection
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 attach-agent $udp1
+$cbr1 set type_ CBR
+$cbr1 set packet_size_ 500
+$cbr1 set interval_ 0.005
+#schdule events or CBR agents
+$ns at 0.1 "$cbr start"
+$ns at 4.5 "$cbr stop"
+$ns at 1.0 "$cbr1 start"
+$ns at 4.0 "$cbr1 stop"
+#call the finished procedure after 5 seconds of simulation time
+$ns at 5.0 "finish"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ring topology
+# create sim obj
+set ns [new Simulator]
+ 
+#open the NAM trace file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+ 
+ 
+set tf [open out.tr w]
+$ns trace-all $tf
+ 
+ 
+#create two nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+set n4 [$ns node]
+set n5 [$ns node]
+set n6 [$ns node]
+ 
+#create links between nodes
+$ns duplex-link $n0 $n1 1Mb 10ms DropTail
+$ns duplex-link $n1 $n2 1Mb 10ms DropTail
+$ns duplex-link $n2 $n3 1Mb 10ms DropTail
+$ns duplex-link $n3 $n4 1Mb 10ms DropTail
+$ns duplex-link $n5 $n4 1Mb 10ms DropTail
+$ns duplex-link $n5 $n6 1Mb 10ms DropTail
+$ns duplex-link $n6 $n0 1Mb 10ms DropTail
+ 
+ 
+#set up UDP Connection
+set udp0 [ new Agent/UDP]
+$ns attach-agent $n0 $udp0
+ 
+set null0 [new Agent/Null]
+$ns attach-agent $n3 $null0
+ 
+ 
+$ns connect $udp0 $null0
+ 
+#setup CBR over UDP connection
+set cbr0 [new Application/Traffic/CBR]
+$cbr0 attach-agent $udp0
+$cbr0 set packetSize_ 500
+$cbr0 set interval_ 0.005
+ 
+ 
+ 
+#define a finish procedure
+proc finish {} {
+global ns nf tf
+$ns flush-trace
+ 
+#close the NAM files
+close $nf
+close $tf
+ 
+#execute NAM on the trace file
+exec nam out.nam &
+exit 0
+}
+ 
+ 
+ 
+#schedule events for the cbr agents
+$ns rtproto DV
+$ns at 0.5 "$cbr0 start"
+#STep: Deleting the link 2 and 3
+$ns rtmodel-at 1.0 down $n2 $n3
+$ns rtmodel-at 2.0 up $n2 $n3
+$ns at 4.5 "$cbr0 stop"
+$ns at 5.0 "finish"
+$ns run
+
+
+
+ 
+TCP CONGESTION
+#Create a simulator object
+set ns [new Simulator]
+ 
+#Open the NAM trace file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+ 
+set tf [open out.tr w]
+$ns trace-all $tf
+ 
+$ns color 1 Blue
+$ns color 2 Red
+ 
+set n(0) [$ns node]
+set n(1) [$ns node]
+set n(2) [$ns node]
+set n(3) [$ns node]
+ 
+#for {set i 0} {$i < 4} {incr i} {
+#set n{$i} [$ns node]
+#}
+ 
+$ns duplex-link $n(0) $n(2) 2Mb 10ms DropTail
+$ns duplex-link $n(1) $n(2) 2Mb 10ms DropTail
+$ns duplex-link $n(2) $n(3) 1.2Mb 10ms DropTail
+ 
+$ns duplex-link-op $n(0) $n(2) orient right-down
+$ns duplex-link-op $n(1) $n(2) orient right-up
+$ns duplex-link-op $n(2) $n(3) orient right
+ 
+$ns duplex-link-op $n(2) $n(3) queuePos 0.5
+ 
+set tcp0 [new Agent/TCP]
+$tcp0 set class_ 1
+$ns attach-agent $n(0) $tcp0
+ 
+set ftp0 [new Application/FTP]
+$ftp0 attach-agent $tcp0
+ 
+set sink [new Agent/TCPSink]
+$ns attach-agent $n(3) $sink
+ 
+$ns connect $tcp0 $sink
+ 
+set udp1 [new Agent/UDP]
+$udp1 set class_ 2
+$ns attach-agent $n(1) $udp1
+ 
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 set packetSize_ 1000
+$cbr1 set rate_ 1Mb
+$cbr1 attach-agent $udp1
+ 
+set null [new Agent/Null]
+$ns attach-agent $n(3) $null
+ 
+$ns connect $udp1 $null
+ 
+set outfile [open congestion.txt w]
+proc plotWindow {tcp outfile} {
+global ns
+set now [$ns now]
+ 
+#inbuilt tcp variables
+#cwnd_ -congestion window
+#default ssthresh_20
+ 
+set cwnd [$tcp set cwnd_]
+puts $outfile "$now $cwnd"
+$ns at [expr $now+0.1] "plotWindow $tcp $outfile"
+}
+ 
+$ns at 1.0 "plotWindow $tcp0 $outfile"
+ 
+#Define a 'finish' procedure
+proc finish {} {
+global ns nf tf
+$ns flush-trace
+#Close the NAM trace file
+close $nf
+close $tf
+#Execute NAM on the trace file
+exec nam out.nam &
+exit 0
+}
+ 
+$ns at 0.5 "$cbr1 start"
+$ns at 1.0 "$ftp0 start"
+$ns at 20.0 "$ftp0 stop"
+$ns at 20.5 "$cbr1 stop"
+$ns at 20.6 "finish"
+$ns run
+
+
+
+
+
+
+
+
+
+ 
+BUS TOPOLOGY
+#Create a simulator object
+set ns [new Simulator]
+ 
+#Open the NAM trace file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+ 
+set tf [open out.tr w]
+$ns trace-all $tf
+ 
+#Create an array to hold all the parameters#
+ 
+#Bandwidth#
+set n(bw) 1Mb
+ 
+#Prop Delay#
+set n(delay) 10ms
+ 
+#data-link layer ll class#
+set n(ll) LL
+ 
+#Mac superclass IEEE 802.3#
+set n(mac) Mac/802_3
+ 
+#network interface#
+set n(ifq) Queue/DropTail
+ 
+#Channel class#
+set n(chan) Channel
+ 
+if {$argc != 2} {
+puts "Usage ns csmacd.tcl <Number of nodes> <number of traffic sources>"
+puts "Example ns bus.tcl 15 2"
+exit
+}
+ 
+set n(num) [lindex $argv 0]
+set n(nn) [lindex $argv 1]
+for {set i 0} {$i < $n(num)} {incr i} {
+set node($i) [$ns node]
+lappend nl $node($i)
+}
+ 
+$ns make-lan -trace on $nl $n(bw) $n(delay) $n(ll) $n(ifq) $n(mac) $n(chan)
+set nodex [$ns node]
+$ns duplex-link $nodex $node(0) 1Mb 10ms DropTail
+$ns duplex-link-op $nodex $node(0) orient right
+ 
+set null(0) [new Agent/Null]
+$ns attach-agent $node(0) $null(0)
+ 
+for {set i 1} {$i <= $n(nn)} {incr i} {
+set udp($i) [new Agent/UDP]
+$ns attach-agent $node($i) $udp($i)
+set cbr($i) [new Application/Traffic/CBR]
+$cbr($i) set packetSize_ 1000
+$cbr($i) set rate_ 100Kb
+$cbr($i) attach-agent $udp($i)
+$ns connect $udp($i) $null(0)
+$ns at 0.5 "$cbr($i) start"
+$ns at 20.0 "$cbr($i) stop"
+}
+ 
+$ns at 20.5 "finish"
+ 
+#Define a 'finish' procedure
+proc finish {} {
+global ns nf tf
+$ns flush-trace
+#Close the NAM trace file
+close $nf
+close $tf
+#Execute NAM on the trace file
+exec nam out.nam &
+exit 0
+}
+$ns run
+ 
+
+
+
+
+
+
+BIT AND BYTE STUFFING
+ 
+<Bit stuffing and de-stuffing IN C>
+#include<stdio.h>
+ 
+int main() {
+    int choice, i = 0, j = 0, count = 0;
+    char a[100];
+    printf("Enter operation to bo performed:\n 1. stuffing\n 2. De-stuffing\n enter your choice : ");
+    scanf("%d", &choice);
+    switch(choice) {
+        case 1:
+            printf("Enter : ");
+            scanf("%s", &a);
+            for(i =0 ; a[i] != '\0'; i++) {
+                if(a[i] == '0') {
+                    count = 0;
+                } else {
+                    count = count + 1;
+                }
+                printf("The stuffed output : ");
+                printf("%c", a[i]);
+                if(count == 5) {
+                    printf("0");
+                    count = 1;
+                }
+            }
+            break;
+        case 2:
+            printf("Enter : ")
+            scanf("%s", &a);
+            for(i =0; a[i] != '\0'; i++) {
+                if(a[i] == '0') {
+                    count = 0;
+                } else {
+                    count = count + 1;
+                }
+                 printf("The de-stuffed output : ");
+                printf("%c", a[i]);
+                if(count == 5) {
+                    count = 0;
+                    i++;
+                }
+            }
+            break;
+    }
+    return 0;
+}
+<Byte stuffing and de-stuffing IN C>
+ 
+#include<stdio.h>
+int main() {
+    char frame[100], str[100];
+    char flag = '$';
+    char esc = '#';
+    int i = 0;
+    printf("Enter string to be byte stuffed:");
+    scanf("%s", &str);
+    frame[0] = '$';
+    int j = 1;
+    for(i = 0; str[i] != '\0'; i++) {
+        frame[j++] = str[i];
+        if(str[i] == '$' || str[i] == '#') {
+            frame[j++] = '#';
+        }
+    }
+    frame[j++] = '$';
+    frame[j++] = '\0';
+    printf("The stuffed byte is :");
+    printf("%s", frame);
+}
+ 
